@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 
-const KakaoMap = () => {
+const KakaoMap = ({restaurants}) => {
     useEffect(() => {
         const script = document.createElement('script');
         script.async = true;
@@ -15,9 +15,30 @@ const KakaoMap = () => {
                     level: 2 // 확대 레벨 설정
                 };
                 const map = new window.kakao.maps.Map(container, options);
+
+                restaurants.forEach(restaurant => {
+                    const markerPosition  = new window.kakao.maps.LatLng(restaurant.latitude, restaurant.longitude);
+                    const marker = new window.kakao.maps.Marker({
+                        position: markerPosition
+                    });
+                    marker.setMap(map);
+
+                    // 커스텀 오버레이에 표시할 내용
+                    const overlayContent = `<div style="padding:5px;background:white;border:1px solid black;border-radius:4px;">${restaurant.name}</div>`;
+
+                    // 커스텀 오버레이 생성
+                    const customOverlay = new window.kakao.maps.CustomOverlay({
+                        position: markerPosition,
+                        content: overlayContent,
+                        yAnchor: 2.3
+                    });
+
+                    // 커스텀 오버레이를 지도에 표시
+                    customOverlay.setMap(map);
+                });
             });
         };
-    }, []);
+    }, [restaurants]);
 
     return (
         <div 
