@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 
-const KakaoMap = ({restaurants, fetchRestaurants}) => {
+const KakaoMap = ({restaurants, fetchRestaurants, onMapClick}) => {
 
     const deleteRestaurant = async (restaurantId) => {
         try {
@@ -37,6 +37,13 @@ const KakaoMap = ({restaurants, fetchRestaurants}) => {
                     level: 2 // 확대 레벨 설정
                 };
                 const map = new window.kakao.maps.Map(container, options);
+
+
+                // 지도 클릭 이벤트 리스너 추가
+                window.kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
+                    const latlng = mouseEvent.latLng;
+                    onMapClick(latlng.getLat(), latlng.getLng());
+                });
 
                 restaurants.forEach(restaurant => {
                     const markerPosition  = new window.kakao.maps.LatLng(restaurant.latitude, restaurant.longitude);
@@ -102,7 +109,7 @@ const KakaoMap = ({restaurants, fetchRestaurants}) => {
                 });
             });
         };
-    }, [restaurants]);
+    }, [restaurants, fetchRestaurants, onMapClick]);
 
     return (
         <div 

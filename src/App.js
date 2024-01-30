@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import KakaoMap from './components/KakaoMap';
 
+//TODO 음식점등록 클릭했을 때, 지도 로드 되면서 중심좌표로 이동하는 버그
+//TODO 리펙토링
 const App = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [showRestaurantPopup, setShowRestaurantPopup] = useState(false);
@@ -29,6 +31,31 @@ const App = () => {
       console.error('데이터를 불러오는데 실패했습니다:', error);
     }
   };
+
+  const handleMapClick = (latitude, longitude) => {
+    if (showRestaurantPopup) {
+      setFormData({ ...formData, latitude, longitude });
+    }
+  };
+
+  // 음식점 등록 버튼 클릭 시 팝업 상태 업데이트
+  const openRestaurantPopup = (event) => {
+    
+    setShowRestaurantPopup(true);
+    setFormData({
+      name: '',
+      latitude: '',
+      longitude: '',
+      // 다른 필드들도 초기화 필요한 경우 여기에 추가
+    });
+    event.stopPropagation();
+
+    // console.log(showRestaurantPopup); // 상태 로그 출력
+  };
+
+  useEffect(() => {
+    console.log('showRestaurantPopup 상태:', showRestaurantPopup);
+  }, [showRestaurantPopup]);
 
   useEffect(() => {
     
@@ -86,7 +113,7 @@ const App = () => {
         <h1>My Kakao Map</h1>
         <div>
           <button onClick={() => setShowPopup(true)} style={{ /* 스타일 */ }}>방문</button>
-          <button onClick={() => setShowRestaurantPopup(true)} style={{ /* 스타일 */ }}>음식점 등록</button>
+          <button onClick={openRestaurantPopup} style={{ /* 스타일 */ }}>음식점 등록</button>
         </div>
       </div>
       {showPopup && (
@@ -160,7 +187,7 @@ const App = () => {
           </form>
         </div>
       )}
-      <KakaoMap restaurants={restaurants} fetchRestaurants={fetchRestaurants} />
+      <KakaoMap restaurants={restaurants} fetchRestaurants={fetchRestaurants} onMapClick={handleMapClick} />
     </div>
   );
 };
