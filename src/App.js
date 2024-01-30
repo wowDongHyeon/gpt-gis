@@ -12,25 +12,26 @@ const App = () => {
 
   const [restaurants, setRestaurants] = useState([]);
 
-  useEffect(() => {
-    const fetchRestaurants = async () => {
-      try {
-        const response = await fetch('http://127.0.0.1:8080/selectRestaurantAll');
-        if (!response.ok) {
-          throw new Error('서버 통신 오류');
-        }
-        const data = await response.json();
-
-        // const data = [
-        //   { id: 1, name: '신촌설렁탕', latitude: 37.557057, longitude: 126.973621 }
-        // ];
-
-        setRestaurants(data);
-      } catch (error) {
-        console.error('데이터를 불러오는데 실패했습니다:', error);
+  const fetchRestaurants = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:8080/selectRestaurantAll');
+      if (!response.ok) {
+        throw new Error('서버 통신 오류');
       }
-    };
+      const data = await response.json();
 
+      // const data = [
+      //   { id: 1, name: '신촌설렁탕', latitude: 37.557057, longitude: 126.973621 }
+      // ];
+
+      setRestaurants(data);
+    } catch (error) {
+      console.error('데이터를 불러오는데 실패했습니다:', error);
+    }
+  };
+
+  useEffect(() => {
+    
     fetchRestaurants();
   }, []);
 
@@ -64,7 +65,7 @@ const App = () => {
 
       // restaurants 상태 업데이트
       setRestaurants(updatedRestaurants);
-      
+
       // 폼 데이터 초기화
       setFormData({
         name: '',
@@ -159,7 +160,7 @@ const App = () => {
           </form>
         </div>
       )}
-      <KakaoMap restaurants={restaurants} />
+      <KakaoMap restaurants={restaurants} fetchRestaurants={fetchRestaurants} />
     </div>
   );
 };
