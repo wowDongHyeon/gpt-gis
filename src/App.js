@@ -92,24 +92,43 @@ const App = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     formData.latitude = parseFloat(formData.latitude);
     formData.longitude = parseFloat(formData.longitude);
-
-    // 음식점 등록 요청
-    const response = await fetch('http://127.0.0.1:8080/restaurantEntry', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(formData),
-    });
-
-    if (response.ok) {
-      console.log('Restaurant data submitted successfully');
-      setShowRestaurantPopup(false);
-      setShowPopup(false);
-
+  
+    if (showRestaurantPopup) {
+      // 음식점 등록 요청
+      const response = await fetch('http://127.0.0.1:8080/restaurantEntry', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+  
+      if (response.ok) {
+        console.log('Restaurant data submitted successfully');
+        setShowRestaurantPopup(false);
+        setFormData({
+          name: '',
+          latitude: '',
+          longitude: '',
+          tastes: '5',
+        });
+  
+        // 음식점 목록 업데이트
+        const selectResponse = await fetch('http://127.0.0.1:8080/selectRestaurantAll');
+        if (!selectResponse.ok) {
+          throw new Error('Failed to fetch restaurants');
+        }
+        const updatedRestaurants = await selectResponse.json();
+        setRestaurants(updatedRestaurants);
+      } else {
+        console.error('Failed to submit restaurant data');
+      }
+    }
+  
+    if (showPopup) {
       // 방문 정보 등록 요청
       const visitData = {
         user_id: 'LSK',
@@ -117,7 +136,7 @@ const App = () => {
         visit_date: formData.visitDate,
         taste_rating: formData.tastes,
       };
-
+  
       const visitResponse = await fetch('http://127.0.0.1:8080/visitsEntry', {
         method: 'POST',
         headers: {
@@ -125,30 +144,19 @@ const App = () => {
         },
         body: JSON.stringify(visitData),
       });
-
+  
       if (visitResponse.ok) {
-        console.log('등록 성공');
+        console.log('Visit data submitted successfully');
+        setShowPopup(false);
+        setFormData({
+          restaurant: '',
+          id: '',
+          visitDate: '',
+          tastes: '5',
+        });
       } else {
-        console.error('등록 실패');
+        console.error('Failed to submit visit data');
       }
-
-      // 음식점 목록 업데이트
-      const selectResponse = await fetch('http://127.0.0.1:8080/selectRestaurantAll');
-      if (!selectResponse.ok) {
-        throw new Error('Failed to fetch restaurants');
-      }
-      const updatedRestaurants = await selectResponse.json();
-      setRestaurants(updatedRestaurants);
-
-      // 폼 데이터 초기화
-      setFormData({
-        name: '',
-        latitude: '',
-        longitude: '',
-        tastes: '5',
-      });
-    } else {
-      console.error('Failed to submit restaurant data');
     }
   };
 
