@@ -1,16 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import KakaoMap from './components/KakaoMap';
 
-//TODO 음식점등록 클릭했을 때, 지도 로드 되면서 중심좌표로 이동하는 버그
-//TODO 리펙토링
+// TODO 음식점 등록 클릭했을 때, 지도 로드 되면서 중심좌표로 이동하는 버그
+// TODO 리펙토링
 const App = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [showRestaurantPopup, setShowRestaurantPopup] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     latitude: '',
-    longitude: ''
+    longitude: '',
+    tastes: '5',
   });
+
+  const handleMarkerClick = (restaurantName) => {
+    // restaurants 배열에서 해당 가게 정보 찾기
+    const clickedRestaurant = restaurants.find((restaurant) => restaurant.name === restaurantName);
+  
+    if (clickedRestaurant) {
+      setFormData({
+        ...formData,
+        restaurant: clickedRestaurant.name, // 가게명 설정
+        id: clickedRestaurant.id, // 가게 ID 설정
+      });
+    }
+  };
 
   const [restaurants, setRestaurants] = useState([]);
 
@@ -21,12 +35,8 @@ const App = () => {
         throw new Error('서버 통신 오류');
       }
       const data = await response.json();
-
-      // const data = [
-      //   { id: 1, name: '신촌설렁탕', latitude: 37.557057, longitude: 126.973621 }
-      // ];
-
       setRestaurants(data);
+      console.log('가게 정보 저장 응답:', data);
     } catch (error) {
       console.error('데이터를 불러오는데 실패했습니다:', error);
     }
@@ -36,21 +46,32 @@ const App = () => {
     if (showRestaurantPopup) {
       setFormData({ ...formData, latitude, longitude });
     }
+    if (showPopup) {
+      setFormData({ ...formData, latitude: '', longitude: '' });
+    }
+  };
+
+  // 방문 팝업창 열릴 때 초기화
+  const openVisitPopup = () => {
+    setShowPopup(true);
+    setFormData({
+      ...formData,
+      latitude: '',
+      longitude: '',
+      visitDate: new Date().toISOString().split('T')[0], // 방문일 default로 현재 날짜 설정
+    });
   };
 
   // 음식점 등록 버튼 클릭 시 팝업 상태 업데이트
   const openRestaurantPopup = (event) => {
-    
     setShowRestaurantPopup(true);
     setFormData({
       name: '',
       latitude: '',
       longitude: '',
-      // 다른 필드들도 초기화 필요한 경우 여기에 추가
+      tastes: '5', // 이 부분을 tastes로 초기화하도록 수정
     });
     event.stopPropagation();
-
-    // console.log(showRestaurantPopup); // 상태 로그 출력
   };
 
   useEffect(() => {
@@ -58,12 +79,15 @@ const App = () => {
   }, [showRestaurantPopup]);
 
   useEffect(() => {
-    
     fetchRestaurants();
   }, []);
 
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value !== undefined ? value : '', // 값이 undefined인 경우 빈 문자열로 설정
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -72,6 +96,7 @@ const App = () => {
     formData.latitude = parseFloat(formData.latitude);
     formData.longitude = parseFloat(formData.longitude);
 
+    // 음식점 등록 요청
     const response = await fetch('http://127.0.0.1:8080/restaurantEntry', {
       method: 'POST',
       headers: {
@@ -81,29 +106,49 @@ const App = () => {
     });
 
     if (response.ok) {
-      console.log('Data submitted successfully');
+      console.log('Restaurant data submitted successfully');
       setShowRestaurantPopup(false);
-      // 첫 번째 요청이 성공적으로 완료되면, 두 번째 요청을 실행
+      setShowPopup(false);
+
+      // 방문 정보 등록 요청
+      const visitData = {
+        user_id: 'LSK',
+        restaurant_id: formData.id,
+        visit_date: formData.visitDate,
+        taste_rating: formData.tastes,
+      };
+
+      const visitResponse = await fetch('http://127.0.0.1:8080/visitsEntry', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(visitData),
+      });
+
+      if (visitResponse.ok) {
+        console.log('등록 성공');
+      } else {
+        console.error('등록 실패');
+      }
+
+      // 음식점 목록 업데이트
       const selectResponse = await fetch('http://127.0.0.1:8080/selectRestaurantAll');
       if (!selectResponse.ok) {
         throw new Error('Failed to fetch restaurants');
       }
       const updatedRestaurants = await selectResponse.json();
-
-      // restaurants 상태 업데이트
       setRestaurants(updatedRestaurants);
 
       // 폼 데이터 초기화
       setFormData({
         name: '',
         latitude: '',
-        longitude: ''
+        longitude: '',
+        tastes: '5',
       });
-
-
     } else {
-      console.error('Failed to submit data');
-      // 에러 처리 로직을 추가할 수 있습니다.
+      console.error('Failed to submit restaurant data');
     }
   };
 
@@ -112,7 +157,7 @@ const App = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px' }}>
         <h1>My Kakao Map</h1>
         <div>
-          <button onClick={() => setShowPopup(true)} style={{ /* 스타일 */ }}>방문</button>
+          <button onClick={openVisitPopup} style={{ /* 스타일 */ }}>방문</button>
           <button onClick={openRestaurantPopup} style={{ /* 스타일 */ }}>음식점 등록</button>
         </div>
       </div>
@@ -129,28 +174,24 @@ const App = () => {
           width: '400px', 
           zIndex: 1000, // z-index 추가
         }}>
-            <button onClick={() => setShowPopup(false)} style={{ position: 'absolute', top: '10px', right: '10px', cursor: 'pointer' }}>X</button>
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <button onClick={() => setShowPopup(false)} style={{ position: 'absolute', top: '10px', right: '10px', cursor: 'pointer' }}>X</button>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div>
-              <label>음식점: <input type="text" name="restaurant" value={formData.restaurant} onChange={handleInputChange} /></label>
+              <label>음식점: <input type="text" name="restaurant" value={formData.restaurant} onChange={handleInputChange} readOnly /></label>
             </div>
             <div>
-              <label>위도: <input type="text" name="latitude" value={formData.latitude} onChange={handleInputChange} /></label>
+              <label>맛: 
+                <select name="tastes" value={formData.tastes} onChange={handleInputChange}>
+                  <option value="1">너무 맛없음</option>
+                  <option value="2">맛없음</option>
+                  <option value="3">보통</option>
+                  <option value="4">맛있음</option> 
+                  <option value="5">너무 맛있음</option>
+                </select>
+              </label>
             </div>
             <div>
-              <label>경도: <input type="text" name="longitude" value={formData.longitude} onChange={handleInputChange} /></label>
-            </div>
-            <div>
-              <label>맛: <input type="text" name="taste" value={formData.taste} onChange={handleInputChange} /></label>
-            </div>
-            <div>
-              <label>간날짜: <input type="date" name="visitDate" value={formData.visitDate} onChange={handleInputChange} /></label>
-            </div>
-            <div>
-              <label>거리: <input type="text" name="distance" value={formData.distance} onChange={handleInputChange} /></label>
-            </div>
-            <div>
-              <label>평가: <input type="number" name="rating" value={formData.rating} onChange={handleInputChange} /></label>
+              <label>방문일: <input type="date" name="visitDate" value={formData.visitDate} onChange={handleInputChange} /></label>
             </div>
             <button type="submit" style={{ padding: '10px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>등록</button>
           </form>
@@ -187,7 +228,7 @@ const App = () => {
           </form>
         </div>
       )}
-      <KakaoMap restaurants={restaurants} fetchRestaurants={fetchRestaurants} onMapClick={handleMapClick} />
+      <KakaoMap restaurants={restaurants} fetchRestaurants={fetchRestaurants} onMapClick={handleMapClick} onMarkerClick={handleMarkerClick} />
     </div>
   );
 };

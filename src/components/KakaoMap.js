@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
-const KakaoMap = ({restaurants, fetchRestaurants, onMapClick}) => {
+const KakaoMap = ({restaurants, fetchRestaurants, onMapClick, onMarkerClick}) => {
+    const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+    const mapRef = useRef(null); // Ref 추가
 
     const deleteRestaurant = async (restaurantId) => {
         try {
@@ -11,7 +13,7 @@ const KakaoMap = ({restaurants, fetchRestaurants, onMapClick}) => {
             },
             body: JSON.stringify({ restaurantId }),
           });
-    
+     
           if (response.ok) {
             console.log('Restaurant deleted successfully');
             fetchRestaurants(); // 음식점 목록 다시 가져오기
@@ -37,7 +39,7 @@ const KakaoMap = ({restaurants, fetchRestaurants, onMapClick}) => {
                     level: 2 // 확대 레벨 설정
                 };
                 const map = new window.kakao.maps.Map(container, options);
-
+                mapRef.current = map; // Ref에 map 객체 저장
 
                 // 지도 클릭 이벤트 리스너 추가
                 window.kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
@@ -63,7 +65,7 @@ const KakaoMap = ({restaurants, fetchRestaurants, onMapClick}) => {
                     });
 
                     // 커스텀 오버레이를 지도에 표시
-                    
+                    customOverlay.setMap(map);
 
                     // 커스텀 오버레이에 이벤트 리스너 추가
                     const overlayDiv = customOverlay.a; // 커스텀 오버레이의 DOM 요소
@@ -106,10 +108,22 @@ const KakaoMap = ({restaurants, fetchRestaurants, onMapClick}) => {
                     };
 
                     customOverlay.setMap(map);
+
+                    overlayDiv.onclick = () => {
+                        const restaurantName = overlayDiv.children[0].innerText;
+                        setSelectedRestaurant(restaurantName);
+                    };
                 });
             });
         };
-    }, [restaurants, fetchRestaurants, onMapClick]);
+    }, [restaurants, fetchRestaurants, onMapClick, onMarkerClick]);
+
+    useEffect(() => {
+        if (selectedRestaurant) {
+          onMarkerClick(selectedRestaurant);
+          setSelectedRestaurant(null); // 선택한 음식점 초기화
+        }
+    }, [selectedRestaurant, onMarkerClick]);
 
     return (
         <div 
