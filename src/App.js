@@ -5,6 +5,7 @@ import KakaoMap from './components/KakaoMap';
 // TODO 리펙토링
 const App = () => {
   const [showPopup, setShowPopup] = useState(false);
+  const [showGptPopup, setShowGptPopup] = useState(false);
   const [showRestaurantPopup, setShowRestaurantPopup] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -62,6 +63,16 @@ const App = () => {
     });
   };
 
+  // GPT추천 팝업창 열릴 때 초기화
+  const openGptPopup = () => {
+    setShowGptPopup(true);
+    setFormData({
+      ...formData,
+      latitude: '',
+      longitude: '',
+      visitDate: new Date().toISOString().split('T')[0], // 방문일 default로 현재 날짜 설정
+    });
+  };
   // 음식점 등록 버튼 클릭 시 팝업 상태 업데이트
   const openRestaurantPopup = (event) => {
     setShowRestaurantPopup(true);
@@ -158,6 +169,64 @@ const App = () => {
         console.error('Failed to submit visit data');
       }
     }
+
+    if (showGptPopup) {
+
+        const selectResponse = await fetch('http://127.0.0.1:8080/selectVisitsTextInfoAll');
+        if (!selectResponse.ok) {
+          throw new Error('Failed to fetch restaurants');
+        }
+        
+        
+
+        const updatedRestaurants = await selectResponse.json();
+
+        const visitTexts = updatedRestaurants
+        .map(restaurant => restaurant.visit_text_info)
+        .join('\n');
+
+
+        let prompt = "너는 데이터를 기반으로 음식점을 추천해주는 프로그램이다.\n"
+        prompt += "나는 지금 점심을 먹을 식당을 고민하고 있다. 아래 데이터를 기반으로 점심에 갈 음식점을 추천해라. \n";
+        prompt += "또한, 추천하는 이유를 간단하게 출력해라. \n";
+        prompt += visitTexts;
+        prompt += "\n```"
+        
+        const gptApiResponse = await gptApiRequest(prompt)
+
+        alert(gptApiResponse);
+        setShowGptPopup(false);
+
+        
+    }
+  };
+
+  //GPT API 요청
+  const gptApiRequest = async (prompt) => {
+
+    console.log(prompt);
+
+    const response = await fetch("https://api.openai.com/v1/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer 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"
+      },
+      body: JSON.stringify({
+        "model": "gpt-3.5-turbo-instruct",
+        // "model": "gpt-4-1106-preview",
+        "prompt": prompt,
+        "max_tokens": 500,
+        "temperature": 0
+      })
+    });
+
+    
+    const responseJson = await response.json();
+
+    const result = responseJson.choices[0].text;
+
+    return result;
   };
 
   return (
@@ -167,6 +236,7 @@ const App = () => {
         <div>
           <button onClick={openVisitPopup} style={{ /* 스타일 */ }}>방문</button>
           <button onClick={openRestaurantPopup} style={{ /* 스타일 */ }}>음식점 등록</button>
+          <button onClick={openGptPopup} style={{ /* 스타일 */ }}>GPT추천</button>
         </div>
       </div>
       {showPopup && (
@@ -202,6 +272,29 @@ const App = () => {
               <label>방문일: <input type="date" name="visitDate" value={formData.visitDate} onChange={handleInputChange} /></label>
             </div>
             <button type="submit" style={{ padding: '10px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>등록</button>
+          </form>
+        </div>
+      )}
+      {showGptPopup && (
+        <div style={{ 
+          position: 'fixed', 
+          top: '50%', 
+          left: '50%', 
+          transform: 'translate(-50%, -50%)', 
+          backgroundColor: 'white', 
+          padding: '20px', 
+          borderRadius: '10px', 
+          boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)', 
+          width: '400px', 
+          zIndex: 1000, // z-index 추가
+        }}>
+          <button onClick={() => setShowGptPopup(false)} style={{ position: 'absolute', top: '10px', right: '10px', cursor: 'pointer' }}>X</button>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div>
+              <label>GPT가 오늘의 점심 메뉴를 추천해드립니다.</label>
+            </div>
+           
+            <button type="submit" style={{ padding: '10px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>GPT추천</button>
           </form>
         </div>
       )}
