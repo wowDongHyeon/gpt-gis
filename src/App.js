@@ -201,31 +201,28 @@ const App = () => {
     }
   };
 
-  //GPT API 요청
+ 
+
+    //GPT API 요청
   const gptApiRequest = async (prompt) => {
 
     console.log(prompt);
 
-    const response = await fetch("https://api.openai.com/v1/completions", {
+    const response = await fetch("http://localhost:4000/chat", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer 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"
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        "model": "gpt-3.5-turbo-instruct",
-        // "model": "gpt-4-1106-preview",
-        "prompt": prompt,
-        "max_tokens": 500,
-        "temperature": 0
+        message: prompt
       })
     });
 
     
-    const responseJson = await response.json();
+  
 
-    const result = responseJson.choices[0].text;
-
+    const result = await response.json();
+    console.log(result);
     return result;
   };
 
@@ -237,6 +234,7 @@ const App = () => {
           <button onClick={openVisitPopup} style={{ /* 스타일 */ }}>방문</button>
           <button onClick={openRestaurantPopup} style={{ /* 스타일 */ }}>음식점 등록</button>
           <button onClick={openGptPopup} style={{ /* 스타일 */ }}>GPT추천</button>
+          
         </div>
       </div>
       {showPopup && (
